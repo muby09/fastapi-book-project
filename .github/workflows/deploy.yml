@@ -1,0 +1,35 @@
+name: CD
+
+on:
+  push:
+    branches: ["main"]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v3
+        with:
+          python-version: "3.12"
+      - name: Install dependencies
+        run: |
+          python -m venv venv
+          source venv/bin/activate
+          pip install -r requirements.txt
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-access-key-id: ${{ 'key-00aa17bf87a9a0903' }}
+          aws-secret-access-key: ${{ secrets.wabisabi }}
+          aws-region: ${{ 'secrets.eu-north-1b' }}
+
+      - name: Deploy to EC2
+        run: |
+          aws ssm send-command \
+            --instance-ids ${{ 'i-04ba305ee0ffdd28f' }} \
+            --document-name "wasabi.pem" \
+            --parameters '{"commands":["cd /home/ubuntu/fastapi-book-project","git pull origin main","source venv/bin/activate","pip install -r requirements.txt","sudo systemctl restart fastapi-app"]}' \
+            --timeout-seconds 600 \
+            --region ${{ 'eu-north-1b'}}
